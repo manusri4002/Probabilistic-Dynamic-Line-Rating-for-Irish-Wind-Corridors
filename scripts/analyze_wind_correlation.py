@@ -6,9 +6,7 @@ and Irish wind generation output (using EirGrid regional or proxy wind data).
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
-
 from dlr.pipeline import add_dlr_columns, load_weather, wind_at_conductor
-
 
 def run_correlation_analysis():
     df = add_dlr_columns(load_weather())
@@ -23,19 +21,19 @@ def run_correlation_analysis():
     # Normalize to a 0 - 100% capacity factor scale
     df["wind_gen_pct"] = (df["wind_gen_proxy"] / df["wind_gen_proxy"].max()) * 100.0
     
-    # 3. Evaluation Metrics
+    #Evaluation Metrics
     spearman_corr, p_val = stats.spearmanr(df["wind_gen_pct"], df["headroom_ratio"])
     
     print(f"--- DLR vs Wind Generation Correlation Results ---")
     print(f"Spearman Rank Correlation: {spearman_corr:.3f} (p-value: {p_val:.4e})")
     
-    # Median headroom by wind output decile
+    #Median headroom by wind output decile
     df["wind_decile"] = pd.qcut(df["wind_gen_pct"], 10, labels=False) + 1
     decile_summary = df.groupby("wind_decile")["headroom_ratio"].median()
     print("\nMedian Headroom Ratio (DLR / Static) by Wind Generation Decile:")
     print(decile_summary)
     
-    # Failure mode analysis: High wind generation (> 80th percentile) but low headroom ratio (< 1.0)
+    #Failure mode analysis: High wind generation (> 80th percentile) but low headroom ratio (< 1.0)
     high_wind_threshold = df["wind_gen_pct"].quantile(0.80)
     failure_hours = df[(df["wind_gen_pct"] >= high_wind_threshold) & (df["headroom_ratio"] < 1.0)]
     failure_share = (len(failure_hours) / len(df[df["wind_gen_pct"] >= high_wind_threshold])) * 100.0
