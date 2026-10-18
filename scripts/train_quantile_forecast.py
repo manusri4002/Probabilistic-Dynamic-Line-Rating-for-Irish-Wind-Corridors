@@ -3,53 +3,11 @@ Day-Ahead Quantile Regression Forecasting using LightGBM (Calibrated).
 Predicts P10 and P50 DLR headroom with rolling volatility features and post-hoc calibration.
 """
 
-import sys
-from pathlib import Path
 import numpy as np
-import pandas as pd
 import lightgbm as lgb
-
-ROOT_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT_DIR / "src" / "physics"))
-from ieee738_v0 import calculate_ampacity
-
+from dlr.pipeline import add_dlr_columns, load_weather
 def prepare_features():
-    weather_path = ROOT_DIR / "data" / "raw_weather" / "north_dublin_2023_hourly.csv"
-    if not weather_path.exists():
-        print("Weather data missing. Run ingest_weather.py first.")
-        return None
-        
-    df = pd.read_csv(weather_path)
-    df["time"] = pd.to_datetime(df["time"])
-    
-    # Compute target DLR ampacity
-    d_m = 0.02814
-    t_c = 75.0
-    r_75 = 8.688e-5
-    line_bearing_deg = 45.0
-    
-    static_rating = calculate_ampacity(t_c, 25.0, 0.5, 90.0, 1000.0, d_m, r_75)
-    
-    dlr_list = []
-    for _, row in df.iterrows():
-        wind_dir = row["wind_dir"]
-        phi_deg = abs(wind_dir - line_bearing_deg) % 180.0
-        if phi_deg > 90.0:
-            phi_deg = 180.0 - phi_deg
-            
-        i_dlr = calculate_ampacity(
-            t_c=t_c,
-            t_a=row["t_ambient"],
-            v_wind=max(row["v_wind"], 0.1),
-            phi_deg=phi_deg,
-            solar_rad=row["solar_rad"],
-            d_m=d_m,
-            r_tc=r_75
-        )
-        dlr_list.append(i_dlr)
-        
-    df["dlr_ampacity"] = dlr_list
-    df["headroom_pct"] = ((df["dlr_ampacity"] - static_rating) / static_rating) * 100.0
+    df = add_dlr_columns(load_weather())
     
     # Temporal features
     df["hour"] = df["time"].dt.hour

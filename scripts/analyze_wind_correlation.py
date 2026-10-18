@@ -3,61 +3,16 @@ Analyze the correlation between DLR headroom on the North Dublin corridor
 and Irish wind generation output (using EirGrid regional or proxy wind data).
 """
 
-import sys
-from pathlib import Path
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT_DIR / "src" / "physics"))
-from ieee738_v0 import calculate_ampacity
+from dlr.pipeline import add_dlr_columns, load_weather, wind_at_conductor
+
 
 def run_correlation_analysis():
-    weather_path = ROOT_DIR / "data" / "raw_weather" / "north_dublin_2023_hourly.csv"
-    if not weather_path.exists():
-        print(f"Weather data not found at {weather_path}.")
-        return
-
-    df = pd.read_csv(weather_path)
-    df["time"] = pd.to_datetime(df["time"])
-    
-    # 1. Wind Shear Correction (10m to 25m conductor height)
-    h_10 = 10.0
-    h_con = 25.0
-    alpha = 0.143
-    df["v_wind_corrected"] = df["v_wind"] * ((h_con / h_10) ** alpha)
-    
-    # Conductor specs & Line orientation
-    d_m = 0.02814
-    t_c = 75.0
-    r_75 = 8.688e-5
-    line_bearing_deg = 45.0 # North Dublin corridor orientation approximation
-    
-    # Static rating baseline
-    static_rating = calculate_ampacity(t_c, 25.0, 0.5, 90.0, 1000.0, d_m, r_75)
-    
-    # Compute hourly DLR with corrected wind and dynamic attack angle
-    dlr_list = []
-    for _, row in df.iterrows():
-        wind_dir = row["wind_dir"]
-        phi_deg = abs(wind_dir - line_bearing_deg) % 180.0
-        if phi_deg > 90.0:
-            phi_deg = 180.0 - phi_deg
-            
-        i_dlr = calculate_ampacity(
-            t_c=t_c,
-            t_a=row["t_ambient"],
-            v_wind=max(row["v_wind_corrected"], 0.1),
-            phi_deg=phi_deg,
-            solar_rad=row["solar_rad"],
-            d_m=d_m,
-            r_tc=r_75
-        )
-        dlr_list.append(i_dlr)
-        
-    df["dlr_ampacity"] = dlr_list
-    df["headroom_ratio"] = df["dlr_ampacity"] / static_rating
+    df = add_dlr_columns(load_weather())
+    df["v_wind_corrected"] = wind_at_conductor(df["v_wind"])
     
     # 2. Mock/Simulate EirGrid All-Island Wind Generation proxy 
     # (In production, replace or merge with downloaded EirGrid Smart Grid CSV data)

@@ -1,0 +1,1 @@
+"""Probabilistic Dynamic Line Rating for Irish wind corridors."""

@@ -2,26 +2,22 @@
 Sensitivity sweep: Drake ACSR ampacity vs wind speed and wind angle (IEEE 738-2012).
 Static rating is computed here from stated conservative assumptions, not hardcoded.
 """
-
-import sys
-from pathlib import Path
-
-ROOT_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT_DIR / "src" / "physics"))
-
 import numpy as np
 import matplotlib.pyplot as plt
-from ieee738_v0 import calculate_ampacity
+from dlr.config import DRAKE, STATIC as STATIC_CASE
+from dlr.ieee738 import calculate_ampacity
+from dlr.pipeline import ROOT_DIR
 
 # Conductor and weather assumptions (Drake ACSR)
-D_M = 0.02814        # conductor diameter (m)
-T_C = 75.0           # max operating temperature (degC)
-R_75 = 8.688e-5      # resistance at 75 degC (ohm/m)
-EMISS = 0.5
-ABSORP = 0.5
+D_M = DRAKE.diameter_m
+T_C = DRAKE.t_max_c
+R_75 = DRAKE.r_at_tmax
+EMISS = DRAKE.emissivity
+ABSORP = DRAKE.absorptivity
 
 # Static (conservative planning) case
-STATIC = dict(t_a=25.0, v_wind=0.5, phi_deg=90.0, solar_rad=1000.0)
+STATIC = dict(t_a=STATIC_CASE.t_a, v_wind=STATIC_CASE.v_wind,
+              phi_deg=STATIC_CASE.phi_deg, solar_rad=STATIC_CASE.solar_rad)
 
 
 def ampacity(t_a, v_wind, phi_deg, solar_rad):

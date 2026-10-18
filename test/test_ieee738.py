@@ -2,9 +2,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src" / "physics"))
-
 import pytest
-from ieee738_v0 import calculate_ampacity, calculate_air_properties
+from dlr.ieee738 import calculate_ampacity, calculate_air_properties
 
 
 def test_air_density_regression():
