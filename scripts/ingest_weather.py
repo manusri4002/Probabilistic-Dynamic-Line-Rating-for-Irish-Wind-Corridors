@@ -1,6 +1,5 @@
 """
 Fetch hourly ERA5 reanalysis weather for the North Dublin corridor via Open-Meteo.
-
 Units written to the CSV: t_ambient degC, v_wind m/s (10 m), wind_dir deg (from),
 solar_* W/m2 (mean of the preceding hour).
 """
@@ -33,8 +32,8 @@ def fetch_irish_corridor_weather():
         "start_date": START_DATE,
         "end_date": END_DATE,
         "hourly": ",".join(HOURLY_VARS),
-        "wind_speed_unit": "ms",  # API default is km/h, which silently broke the DLR maths
-        "models": "era5",         # default "best_match" blends several models
+        "wind_speed_unit": "ms",  
+        "models": "era5",         
         "timezone": "UTC",
     }
 
