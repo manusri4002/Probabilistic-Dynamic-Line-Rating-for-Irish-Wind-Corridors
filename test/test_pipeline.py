@@ -40,7 +40,8 @@ def test_static_rating_regression():
 
 
 def test_add_dlr_columns_shapes_and_headroom_definition():
-    df = pd.DataFrame({"t_ambient": [10.0, 20.0], "v_wind": [5.0, 1.0],
+    df = pd.DataFrame({"time": pd.date_range("2023-07-01", periods=2, freq="h"),
+                       "t_ambient": [10.0, 20.0], "v_wind": [5.0, 1.0],
                        "wind_dir": [135.0, 45.0], "solar_rad": [0.0, 500.0]})
     out = add_dlr_columns(df)
     assert {"dlr_ampacity", "headroom_ratio", "headroom_pct"} <= set(out.columns)
@@ -58,4 +59,3 @@ def test_load_weather_rejects_kmh_data(tmp_path):
     bad.to_csv(path, index=False)
     with pytest.raises(ValueError, match="implausible"):
         load_weather(path)
-        
