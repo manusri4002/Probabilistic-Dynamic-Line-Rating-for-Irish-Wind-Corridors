@@ -1,7 +1,5 @@
 import itertools
-
 import pytest
-
 from dlr.ieee738 import (
     calculate_air_properties,
     calculate_ampacity,
