@@ -1,17 +1,30 @@
-"""Compute hourly DLR ampacity versus the static baseline rating."""
+"""Hourly DLR versus seasonal static ratings, with a sheltering-factor sensitivity table."""
 
-from dlr.pipeline import add_dlr_columns, load_weather
+import pandas as pd
+
+from dlr import config
+from dlr.pipeline import add_dlr_columns, headroom_summary, load_weather
+
+pd.set_option("display.float_format", lambda x: f"{x:,.1f}")
 
 
 def run_headroom_analysis():
-    df = add_dlr_columns(load_weather())
-    static = df.attrs["static_rating"]
+    weather = load_weather()
+    df = add_dlr_columns(weather)
 
-    print(f"Baseline static rating: {static:.1f} A")
-    print(f"Mean DLR ampacity: {df['dlr_ampacity'].mean():.1f} A")
-    print(f"Median headroom over static: {df['headroom_pct'].median():.1f}%")
-    print(f"Time above static rating: {(df['dlr_ampacity'] > static).mean() * 100:.1f}%")
-    print(f"5th-percentile headroom: {df['headroom_pct'].quantile(0.05):.1f}%")
+    print("Static ratings (A): " + ", ".join(f"{k} {v:.0f}" for k, v in df.attrs["static_ratings"].items()))
+    print(f"\nHeadroom over seasonal static rating (sheltering factor {config.SHELTERING_FACTOR}):")
+    print(headroom_summary(df))
+
+    print("\nSensitivity to the effective-wind (sheltering) factor, whole year:")
+    rows = {}
+    for f in config.SHELTERING_SWEEP:
+        r = add_dlr_columns(weather, sheltering=f)["headroom_ratio"]
+        rows[f"x{f}"] = {"median_%": (r.median() - 1) * 100,
+                         "P5_%": (r.quantile(0.05) - 1) * 100,
+                         "P1_%": (r.quantile(0.01) - 1) * 100,
+                         "below_static_%": (r < 1.0).mean() * 100}
+    print(pd.DataFrame(rows).T)
 
 
 if __name__ == "__main__":
