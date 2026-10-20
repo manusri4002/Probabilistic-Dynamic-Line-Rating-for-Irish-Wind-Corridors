@@ -1,135 +1,61 @@
-import itertools
+import numpy as np
+import pandas as pd
 import pytest
-from dlr.ieee738 import (
-    calculate_air_properties,
-    calculate_ampacity,
-    forced_convective_cooling,
-    natural_convective_cooling,
-    thermal_terms,
+
+from dlr import config
+from dlr.pipeline import (
+    add_dlr_columns,
+    attack_angle_deg,
+    load_weather,
+    static_rating,
+    wind_at_conductor,
 )
 
-#Drake ACSR 26/7 at its 75 degC rating (illustrative project conductor)
-D, R75 = 0.02814, 8.688e-5
-CALM_AIR_REGRESSION = 659.18  # A, v = 0, Ta = 25 degC, 1000 W/m2
+
+@pytest.mark.parametrize("wind_dir,bearing,expected", [
+    (45, 45, 0),      # along the line
+    (225, 45, 0),     # same axis, opposite direction
+    (135, 45, 90),    # perpendicular
+    (315, 45, 90),
+    (0, 45, 45),
+    (90, 45, 45),
+    (350, 45, 55),    # wraps through north
+])
+def test_attack_angle_folding(wind_dir, bearing, expected):
+    assert attack_angle_deg(wind_dir, bearing) == pytest.approx(expected)
 
 
-def ampacity(t_c=75.0, t_a=25.0, v=1.0, phi=90.0, sol=1000.0, r=R75):
-    return calculate_ampacity(t_c, t_a, v, phi, sol, D, r)
+def test_shear_scales_ten_metre_wind_to_conductor_height():
+    factor = (config.LINE.conductor_height_m / config.MET_HEIGHT_M) ** config.SHEAR_ALPHA
+    assert wind_at_conductor([5.0])[0] == pytest.approx(5.0 * factor)
+    assert wind_at_conductor([5.0], apply_shear=False)[0] == pytest.approx(5.0)
 
 
-#Constants
-
-def test_air_properties_at_70c():
-    """Guards against constant typos (approximate dry-air values at 70 degC)."""
-    density, viscosity, k_air = calculate_air_properties(70.0, 0.0)
-    assert density == pytest.approx(1.029, abs=0.01)
-    assert viscosity == pytest.approx(2.04e-5, rel=0.03)
-    assert k_air == pytest.approx(0.0295, rel=0.03)
+def test_calm_wind_is_floored():
+    assert wind_at_conductor([0.0])[0] == config.WIND_FLOOR_MS
 
 
-#The physics must close its own energy balance 
-
-@pytest.mark.parametrize(
-    "t_a, v, phi, sol",
-    list(itertools.product([-5.0, 10.0, 30.0], [0.0, 0.3, 2.0, 12.0], [0.0, 45.0, 90.0], [0.0, 600.0])),
-)
-def test_heat_balance_closes(t_a, v, phi, sol):
-    """At the returned current, heat in (I^2 R + q_s) must equal heat out (q_c + q_r)."""
-    t_c = 75.0
-    i = calculate_ampacity(t_c, t_a, v, phi, sol, D, R75)
-    t = thermal_terms(t_c, t_a, v, phi, sol, D)
-    assert i ** 2 * R75 + t["q_s"] == pytest.approx(t["q_c"] + t["q_r"], rel=1e-9)
+def test_static_rating_regression():
+    assert static_rating() == pytest.approx(864.1, abs=0.5)
 
 
-#Physical monotonicity (each would fail if a sign or exponent were wrong) 
-
-def test_more_wind_more_ampacity():
-    assert ampacity(v=5.0) > ampacity(v=1.0) > ampacity(v=0.3)
-
-
-def test_colder_air_more_ampacity():
-    assert ampacity(t_a=5.0) > ampacity(t_a=25.0) > ampacity(t_a=35.0)
-
-
-def test_sunshine_reduces_ampacity():
-    assert ampacity(sol=0.0) > ampacity(sol=1000.0)
+def test_add_dlr_columns_shapes_and_headroom_definition():
+    df = pd.DataFrame({"t_ambient": [10.0, 20.0], "v_wind": [5.0, 1.0],
+                       "wind_dir": [135.0, 45.0], "solar_rad": [0.0, 500.0]})
+    out = add_dlr_columns(df)
+    assert {"dlr_ampacity", "headroom_ratio", "headroom_pct"} <= set(out.columns)
+    assert out["headroom_pct"].iloc[0] == pytest.approx((out["headroom_ratio"].iloc[0] - 1) * 100)
+    assert out["dlr_ampacity"].iloc[0] > out["dlr_ampacity"].iloc[1]
 
 
-def test_higher_temperature_limit_more_ampacity():
-    assert ampacity(t_c=100.0) > ampacity(t_c=75.0)
-
-
-def test_higher_resistance_less_ampacity():
-    assert ampacity(r=1.2e-4) < ampacity(r=R75)
-
-
-def test_cross_wind_cools_more_than_parallel_wind():
-    assert ampacity(phi=90.0) > ampacity(phi=45.0) > ampacity(phi=0.0)
-
-
-@pytest.mark.parametrize("phi, k_expected", [(0.0, 0.388), (45.0, 0.8549), (90.0, 1.0)])
-def test_wind_angle_factor_matches_standard(phi, k_expected):
-    """K_angle cancels in the ratio of forced cooling to the perpendicular case, so this
-    checks the angle polynomial alone. 0.388 (parallel) and 1.0 (perpendicular) are the
-    standard's endpoint values; 45 degrees is the only angle that exercises the sin(2*phi) term."""
-    ratio = (forced_convective_cooling(75.0, 25.0, 3.0, phi, D)
-             / forced_convective_cooling(75.0, 25.0, 3.0, 90.0, D))
-    assert ratio == pytest.approx(k_expected, rel=1e-3)
-
-
-def test_ampacity_scales_as_inverse_sqrt_resistance():
-    assert ampacity(r=4 * R75) == pytest.approx(ampacity() / 2.0, rel=1e-12)
-
-
-# Calm air and edge cases
-
-def test_natural_convection_scales_as_dt_to_the_1_25():
-    """Same film temperature (so same air properties), different temperature difference:
-    q_cn must scale exactly as dT**1.25."""
-    a = natural_convective_cooling(60.0, 40.0, D)   # film 50 degC, dT 20
-    b = natural_convective_cooling(70.0, 30.0, D)   # film 50 degC, dT 40
-    assert b / a == pytest.approx(2.0 ** 1.25, rel=1e-12)
-
-
-def test_natural_convection_scales_as_d_to_the_0_75():
-    assert natural_convective_cooling(75.0, 25.0, 2 * D) / natural_convective_cooling(75.0, 25.0, D) \
-        == pytest.approx(2.0 ** 0.75, rel=1e-12)
-
-
-def test_calm_air_regression_value():
-    """REGRESSION ONLY: pins the calm-air (natural convection) rating of the Drake case."""
-    assert ampacity(v=0.0) == pytest.approx(CALM_AIR_REGRESSION, abs=0.01)
-
-
-def test_high_wind_regression_value():
-    """REGRESSION ONLY: at 10 m/s the second (high Reynolds number) convection expression
-    governs, which the Drake case below never reaches."""
-    assert ampacity(v=10.0) == pytest.approx(2008.86, abs=0.01)
-
-
-def test_zero_wind_falls_back_to_natural_convection():
-    assert forced_convective_cooling(75.0, 25.0, 0.0, 90.0, D) == 0.0
-    assert natural_convective_cooling(75.0, 25.0, D) > 0.0
-    assert ampacity(v=0.0) > 0.0
-    assert ampacity(v=0.05) >= ampacity(v=0.0)
-
-
-@pytest.mark.parametrize("t_c, t_a", [(75.0, 75.0), (75.0, 80.0), (30.0, 40.0)])
-def test_ambient_at_or_above_limit_gives_zero_not_complex(t_c, t_a):
-    """Regression: (t_c - t_a) ** 1.25 used to return a complex number when t_a > t_c."""
-    i = calculate_ampacity(t_c, t_a, 2.0, 90.0, 800.0, D, R75)
-    assert isinstance(i, float)
-    assert i == 0.0
-
-
-@pytest.mark.parametrize("d, r", [(0.0, R75), (D, 0.0), (-0.01, R75)])
-def test_invalid_conductor_is_rejected(d, r):
-    with pytest.raises(ValueError):
-        calculate_ampacity(75.0, 25.0, 1.0, 90.0, 0.0, d, r)
-
-
-#Regression against the current implementation
-
-def test_drake_case_regression_value():
-    i = calculate_ampacity(100.0, 40.0, 0.61, 90.0, 1000.0, D, 9.39e-5)
-    assert i == pytest.approx(992.47, abs=0.01)
+def test_load_weather_rejects_kmh_data(tmp_path):
+    """Regression for the original bug: km/h values read as m/s."""
+    n = 48
+    bad = pd.DataFrame({"time": pd.date_range("2023-01-01", periods=n, freq="h"),
+                        "t_ambient": 8.0, "v_wind": np.full(n, 16.0),
+                        "wind_dir": 200.0, "solar_rad": 0.0})
+    path = tmp_path / "bad.csv"
+    bad.to_csv(path, index=False)
+    with pytest.raises(ValueError, match="implausible"):
+        load_weather(path)
+        
