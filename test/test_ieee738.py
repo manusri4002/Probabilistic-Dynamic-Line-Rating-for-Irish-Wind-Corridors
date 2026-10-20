@@ -43,7 +43,7 @@ def test_heat_balance_closes(t_a, v, phi, sol):
     assert i ** 2 * R75 + t["q_s"] == pytest.approx(t["q_c"] + t["q_r"], rel=1e-9)
 
 
-# Physical monotonicity (each would fail if a sign or exponent were wrong)
+# Physical monotonicity (each would fail if a sign or exponent were wrong) 
 
 def test_more_wind_more_ampacity():
     assert ampacity(v=5.0) > ampacity(v=1.0) > ampacity(v=0.3)
@@ -84,6 +84,7 @@ def test_ampacity_scales_as_inverse_sqrt_resistance():
 
 
 # Calm air and edge cases 
+
 def test_natural_convection_scales_as_dt_to_the_1_25():
     """Same film temperature (so same air properties), different temperature difference:
     q_cn must scale exactly as dT**1.25."""
@@ -130,7 +131,7 @@ def test_invalid_conductor_is_rejected(d, r):
         calculate_ampacity(75.0, 25.0, 1.0, 90.0, 0.0, d, r)
 
 
-#Regression against the current implementation 
+# Regression against the current implementation
 
 def test_drake_case_regression_value():
     """REGRESSION ONLY, not an independent benchmark. This pins the current output so an
