@@ -11,18 +11,17 @@ from dlr.pipeline import ROOT_DIR, add_dlr_columns, load_weather
 
 def plot_headroom_analysis():
     df = add_dlr_columns(load_weather())
-    static_rating = df.attrs["static_rating"]
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5), dpi=300)
-    
-    # 1. Ampacity Duration Curve
-    sorted_dlr = np.sort(df["dlr_ampacity"].values)[::-1]
-    hours_axis = np.arange(len(sorted_dlr)) / 8760.0 * 100.0 # percentage of year
-    
-    ax1.plot(hours_axis, sorted_dlr, color="navy", linewidth=2, label="Dynamic Rating (DLR)")
-    ax1.axhline(static_rating, color="red", linestyle="--", linewidth=1.5, label=f"Static Rating ({static_rating:.0f} A)")
-    ax1.set_title("Annual Ampacity Duration Curve (North Dublin 220 kV)", fontsize=11, fontweight="bold")
-    ax1.set_xlabel("Percentage of Time (%)", fontsize=10)
-    ax1.set_ylabel("Ampacity (A)", fontsize=10)
+
+    # 1. Duration curve of DLR / seasonal static rating (1.0 = no gain over static)
+    sorted_ratio = np.sort(df["headroom_ratio"].values)[::-1]
+    hours_axis = np.arange(len(sorted_ratio)) / len(sorted_ratio) * 100.0  # percentage of year
+
+    ax1.plot(hours_axis, sorted_ratio, color="navy", linewidth=2, label="DLR / seasonal static rating")
+    ax1.axhline(1.0, color="red", linestyle="--", linewidth=1.5, label="Static rating (= 1.0)")
+    ax1.set_title("Rating Duration Curve (North Dublin 220 kV, illustrative)", fontsize=11, fontweight="bold")
+    ax1.set_xlabel("Percentage of Time Ratio Is Exceeded (%)", fontsize=10)
+    ax1.set_ylabel("DLR / static rating", fontsize=10)
     ax1.grid(True, linestyle=":", alpha=0.6)
     ax1.legend(loc="upper right")
     
