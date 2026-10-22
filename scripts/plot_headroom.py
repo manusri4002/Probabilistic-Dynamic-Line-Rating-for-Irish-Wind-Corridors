@@ -5,7 +5,7 @@ for the North Dublin 220 kV corridor.
 
 import numpy as np
 import matplotlib.pyplot as plt
-
+import calendar
 from dlr.pipeline import ROOT_DIR, add_dlr_columns, load_weather
 
 
@@ -27,8 +27,9 @@ def plot_headroom_analysis():
     
     # 2. Monthly Headroom Distribution Boxplot
     df["month"] = df["time"].dt.month
-    monthly_data = [group["headroom_pct"].values for _, group in df.groupby("month")]
-    month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    present = sorted(df["month"].unique())          # a partial year has fewer than 12 months
+    monthly_data = [df.loc[df["month"] == m, "headroom_pct"].values for m in present]
+    month_names = [calendar.month_abbr[m] for m in present]
     
     ax2.boxplot(monthly_data, tick_labels=month_names, patch_artist=True,
                 boxprops=dict(facecolor="skyblue", color="darkblue"),
