@@ -1,0 +1,9 @@
+numpy
+pandas
+scipy
+matplotlib
+lightgbm
+requests
+
+[dev]
+pytest
