@@ -86,14 +86,13 @@ def seasonal_static_ratings(conductor=config.DRAKE, line=config.LINE, cases=conf
     return {name: static_rating(conductor, case, line) for name, case in cases.items()}
 
 def compute_dlr(df, conductor=config.DRAKE, line=config.LINE, apply_shear=True,
-                sheltering=config.SHELTERING_FACTOR, solar_model="auto",
-                albedo=config.GROUND_ALBEDO, diffuse_model=config.DIFFUSE_MODEL):
+                sheltering=config.SHELTERING_FACTOR, solar_model="auto"):
     """Hourly ampacity (A). The physics stays scalar (portable to MicroPython);
     we iterate over plain arrays, which is far faster than DataFrame.iterrows()."""
     v = wind_at_conductor(df["v_wind"].to_numpy(), line, apply_shear, sheltering)
     phi = attack_angle_deg(df["wind_dir"].to_numpy(), line.bearing_deg)
     t_a = df["t_ambient"].to_numpy()
-    sol = solar_on_conductor(df, line, solar_model, albedo, diffuse_model)
+    sol = solar_on_conductor(df, line, solar_model)
     out = [
         calculate_ampacity(
             conductor.t_max_c, ta, vi, pi, si,
