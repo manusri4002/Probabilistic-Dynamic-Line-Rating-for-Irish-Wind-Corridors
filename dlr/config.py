@@ -61,6 +61,8 @@ WIND_FLOOR_MS = 0.1
 # Solar heat gain. ASSUMPTIONS: ground albedo is site-dependent (grass/farmland roughly 0.1-0.25).
 GROUND_ALBEDO = 0.2
 DIFFUSE_MODEL = "cigre601"       # or "isotropic" (CIGRE TB 207 form); the pair is a modelling band
+DIFFUSE_MODELS = ("cigre601", "isotropic")
+BEARING_SWEEP = tuple(range(0, 180, 15))
 SOLAR_TIME_OFFSET_MIN = -30      # Open-Meteo radiation is the mean of the PRECEDING hour: evaluate the sun mid-hour
 
 #Day-ahead forecast
