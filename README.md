@@ -60,6 +60,12 @@ LightGBM quantile models forecast the rating in amps 12-35 hours ahead, issued a
 - **Conformal calibration fixes the risk quantiles.** The low quantiles, which are the ones that matter for a rating, land close to nominal: about 4-5 % at P5 and about 11-12 % at P10. The upper quantiles come out conservative (about 82 % at P75 and 97 % at P90).
 - **No skill over climatology is demonstrated.** Climatology (same hour and season) is about as well calibrated as the calibrated model. The inputs are ERA5 *observations*, not weather forecasts, so skill would not be expected. Real skill needs archived numerical weather forecasts as inputs.
 
+### Rating duration curve and monthly headroom
+
+![Rating duration curve and monthly headroom](figures/dlr_headroom_duration_and_monthly.png)
+
+*Left: dynamic rating divided by the seasonal static rating for each hour of Jan-Sep 2026, sorted high to low (1.0 = static rating). The shaded band covers sheltering factors 0.4-1.0; the dashed orange line is the worst line bearing (75 deg). The rating is below static in 1.4 % of hours in the central case, 1.6 % at the worst bearing, and 0.6-5.7 % across the sheltering range. Right: monthly headroom, central case; medians run from about +48 % (Sep) to +69 % (Jan). Both panels are relative to illustrative static ratings.*
+
 ## Method
 
 - **Heat balance.** IEEE Std 738-2012 steady state: forced and natural convection (the larger applies), radiation and solar gain. Pure scalar Python in `dlr/ieee738.py`, so the same file can run on a microcontroller.
