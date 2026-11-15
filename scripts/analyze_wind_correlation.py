@@ -36,7 +36,6 @@ def check_alignment(weather, wind):
               "where most wind farms are). It is not a time-zone error.")
     return weather_ok
 
-
 def run_correlation_analysis():
     weather = add_dlr_columns(load_weather())
     wind = load_wind_hourly()
