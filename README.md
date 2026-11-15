@@ -127,7 +127,8 @@ Probabilistic-Dynamic-Line-Rating-for-Irish-Wind-Corridors/
 │   ├── plot_sensitivity.py         # Ampacity sensitivity figure
 │   ├── train_quantile_forecast.py  # Quantile forecast + reliability figure
 │   ├── forecast_robustness.py      # Forecast robustness checks
-│   └── analyze_wind_correlation.py # Headroom versus national wind output
+│   ├── analyze_wind_correlation.py # Headroom versus national wind output
+│   └── validate_ieee738.py         # cross-check against linerate
 ├── test/                           # pytest suite
 ├── figures/                        # Output figures used in this README
 ├── data/
