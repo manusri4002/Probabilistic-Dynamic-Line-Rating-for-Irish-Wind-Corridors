@@ -241,6 +241,7 @@ python scripts\ingest_eirgrid.py            # needs an EirGrid workbook in data\
 ```powershell
 python scripts\compute_headroom.py          # headroom tables and bands
 python scripts\data_coverage.py             # data checks, derating events
+python scripts\validate_ieee738.py          # cross-check the heat balance against linerate
 ```
 
 **3. Generate the figures:**
