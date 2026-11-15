@@ -294,7 +294,7 @@ Every assumption (location, conductor, static ratings, sheltering factor, date r
 - forecast features do not change when the future is rewritten (leakage test); conformal coverage reaches its nominal level in simulation;
 - daylight-saving handling of the EirGrid timestamps, including the repeated autumn hour.
 
-**Not yet independently validated:** the absolute ampacity values. A few tests pin the code's own output (for example 864 A for the static case) to catch accidental changes; they are not a check against the standard. Comparison with a worked example from IEEE 738-2012 or with the open-source `linerate` package is the next validation step.
+****Cross-checked against an independent implementation:** `scripts/validate_ieee738.py` compares the convection, radiation and ampacity terms with the open-source `linerate` package over 120 weather cases; all agree within 0.03 % (ampacity within 0.011 %). This shows the code implements the same equations as `linerate`. It is not yet checked against the worked example printed in IEEE 738-2012 itself, and not against measurements; the hardware rig is meant to supply those.
 
 ---
 
