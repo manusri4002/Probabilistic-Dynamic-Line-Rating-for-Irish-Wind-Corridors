@@ -9,7 +9,7 @@ requires-python = ">=3.10"
 dependencies = ["numpy", "pandas", "scipy", "matplotlib", "lightgbm", "requests"]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = ["pytest", "linerate"]
 
 [tool.setuptools]
 packages = ["dlr"]
